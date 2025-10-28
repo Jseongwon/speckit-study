@@ -1,0 +1,8 @@
+﻿tasks:
+  - name: basic_test
+    description: Run basic SpecKit test flow for notification-service
+    inputs:
+      service: "notification-service"
+    required_sections:
+      - "Goal"
+      - "Success Criteria"

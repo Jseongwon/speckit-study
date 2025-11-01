@@ -25,18 +25,27 @@ func main() {
 	c := config.Load()
 
 	conn, ch, err := rabbit.Dial(c.URL)
-	if err != nil { log.Fatalf("dial: %v", err) }
-	defer conn.Close(); defer ch.Close()
+	if err != nil {
+		log.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	defer ch.Close()
 
 	if err := rabbit.Declare(ch, rabbit.Topology{
 		Exchange: c.Exchange, RetryExchange: c.RetryExchange, DLX: c.DLX,
 		Queue: c.Queue, RetryQueue: c.RetryQueue, DLQ: c.DLQ, RetryTTLms: c.RetryTTLms,
-	}); err != nil { log.Fatalf("declare: %v", err) }
+	}); err != nil {
+		log.Fatalf("declare: %v", err)
+	}
 
-	if err := ch.Qos(10, 0, false); err != nil { log.Fatalf("qos: %v", err) }
+	if err := ch.Qos(10, 0, false); err != nil {
+		log.Fatalf("qos: %v", err)
+	}
 
 	deliveries, err := ch.Consume(c.Queue, "go-consumer", false, false, false, false, nil)
-	if err != nil { log.Fatalf("consume: %v", err) }
+	if err != nil {
+		log.Fatalf("consume: %v", err)
+	}
 
 	log.Printf("consumer up. queue=%s maxRetries=%d", c.Queue, c.MaxRetries)
 
@@ -47,7 +56,9 @@ func main() {
 
 		// simulate processing and conditional failure
 		forceFail := false
-		if v, ok := d.Headers["forceFail"].(bool); ok && v { forceFail = true }
+		if v, ok := d.Headers["forceFail"].(bool); ok && v {
+			forceFail = true
+		}
 
 		log.Printf("recv id=%s retries=%d headers=%v", p.MessageID, retries, rabbit.HeadersString(d.Headers))
 
@@ -60,13 +71,13 @@ func main() {
 		if forceFail && retries >= c.MaxRetries {
 			log.Printf("max retries reached -> send to DLQ")
 			// publish to DLX (DLQ is bound to DLX)
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			_ = ch.PublishWithContext(ctx, c.DLX, "", false, false, amqp.Publishing{
-				ContentType: "application/json",
+				ContentType:  "application/json",
 				DeliveryMode: amqp.Persistent,
-				Body: d.Body,
-				Headers: d.Headers,
-				MessageId: p.MessageID,
+				Body:         d.Body,
+				Headers:      d.Headers,
+				MessageId:    p.MessageID,
 			})
 			cancel()
 			_ = d.Ack(false)

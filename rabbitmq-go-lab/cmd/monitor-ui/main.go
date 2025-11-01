@@ -20,8 +20,11 @@ func main() {
 	c := config.Load()
 
 	conn, ch, err := rabbit.Dial(c.URL)
-	if err != nil { log.Fatalf("dial: %v", err) }
-	defer conn.Close(); defer ch.Close()
+	if err != nil {
+		log.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	defer ch.Close()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -42,20 +45,22 @@ func main() {
 		body := map[string]any{"message": r.Form.Get("msg"), "ts": time.Now().Format(time.RFC3339Nano)}
 		b, _ := json.Marshal(body)
 		headers := amqp.Table{"schemaVersion": 1}
-		if fail { headers["forceFail"] = true }
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		if fail {
+			headers["forceFail"] = true
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 		err := rabbit.PublishConfirm(ctx, ch, c.Exchange, "demo.info", amqp.Publishing{
-			ContentType: "application/json",
+			ContentType:  "application/json",
 			DeliveryMode: amqp.Persistent,
-			Body: b,
-			Headers: headers,
-			MessageId: fmt.Sprintf("ui-%d", time.Now().UnixNano()),
-			Type: "demo",
+			Body:         b,
+			Headers:      headers,
+			MessageId:    fmt.Sprintf("ui-%d", time.Now().UnixNano()),
+			Type:         "demo",
 		})
 		cancel()
 		if err != nil {
 			w.WriteHeader(500)
-			_, _ = w.Write([]byte("publish error: "+err.Error()))
+			_, _ = w.Write([]byte("publish error: " + err.Error()))
 			return
 		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)

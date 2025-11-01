@@ -1,0 +1,21 @@
+# .specify/tasks.yaml
+tasks:
+  setup:topology:
+    run: make setup-topology
+    description: "Declare RabbitMQ exchanges, queues, and bindings"
+
+  publish:
+    run: make publish
+    description: "Publish sample messages to the main exchange"
+
+  republish-dlq:
+    run: make republish-dlq
+    description: "Republish DLQ messages back to main queue"
+
+  consumer:
+    run: make run-consumer
+    description: "Run consumer service to process messages"
+
+  monitor-ui:
+    run: go run ./cmd/monitor-ui
+    description: "Launch simple monitoring web UI"
